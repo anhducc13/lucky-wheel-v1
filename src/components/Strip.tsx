@@ -1,24 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "../utils";
+import { MAP_IMAGE_PRIZE } from "../constants";
 
 type Props = {
   listNumbers: number[];
   state: "init" | "running" | "stop";
   direction?: "normal" | "reverse";
+  prize: number;
+  onFinished?: () => void;
 };
 
 export const Strip: React.FC<Props> = ({
-  listNumbers,
+  listNumbers: rands,
   state,
   direction = "normal",
+  prize,
+  onFinished,
 }: Props) => {
   const ref = useRef<HTMLDivElement>(null);
   const [finishedAnimation, setFinishedAnimation] = useState(false);
   const [count, setCount] = useState(0);
-  const rands = useMemo(() => {
-    return listNumbers.sort(() => 0.5 - Math.random());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(listNumbers)]);
 
   const animationIterationCount = useMemo(() => {
     if (state === "init") return "none";
@@ -27,15 +28,15 @@ export const Strip: React.FC<Props> = ({
   }, [state]);
 
   const animationTimingFunction = useMemo(() => {
-    if (state === "stop") return "ease-out";
+    if (state === "stop") return "ease-in-out";
     return "linear";
   }, [state]);
 
   const animationDuration = useMemo(() => {
-    if (state === "running") return 0.05 * listNumbers.length;
-    if (state === "stop") return count + (2 + Math.random() * 2);
+    if (state === "running") return 0.1 * rands.length;
+    if (state === "stop") return count + (3 + Math.random() * 2);
     return 0;
-  }, [state, listNumbers.length, count]);
+  }, [state, rands.length, count]);
 
   useEffect(() => {
     let interval: number | undefined;
@@ -58,6 +59,7 @@ export const Strip: React.FC<Props> = ({
   useEffect(() => {
     const func = () => {
       setFinishedAnimation(true);
+      onFinished?.();
     };
     const currentRef = ref.current;
     if (currentRef) currentRef.addEventListener("animationend", func);
@@ -91,7 +93,7 @@ export const Strip: React.FC<Props> = ({
         <div className="h-full flex items-center">
           <img
             className="size-16 min-w-16 opacity-80"
-            src="/images/gold-prize.svg"
+            src={MAP_IMAGE_PRIZE[prize]}
             alt="gold"
           />
         </div>
