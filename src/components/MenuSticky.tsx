@@ -20,7 +20,7 @@ export const MenuSticky = () => {
     <Dropdown>
       <DropdownTrigger>
         <Button
-          className="fixed top-4 left-4"
+          className="fixed top-4 right-4 md:right-auto md:left-4"
           radius="full"
           variant="shadow"
           isIconOnly

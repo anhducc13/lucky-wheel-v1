@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { RouterProvider } from "react-router-dom";
 import { browserRouter } from "./browserRouter";
 import { firebaseAuth } from "./firebase";
+import { Toaster } from "react-hot-toast";
 
 const App = () => {
   const [initialAuth, setInitialAuth] = useState(false);
@@ -35,7 +36,12 @@ const App = () => {
 
   if (!user) return null;
 
-  return <RouterProvider router={browserRouter} />;
+  return (
+    <>
+      <RouterProvider router={browserRouter} />
+      <Toaster />
+    </>
+  );
 };
 
 export default App;

@@ -12,78 +12,91 @@ import {
   TableRow,
 } from "@nextui-org/react";
 import dayjs from "dayjs";
-import { collection, doc, getDocs, writeBatch } from "firebase/firestore";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { collection, doc, writeBatch } from "firebase/firestore";
+import { useCallback, useMemo, useRef, useState } from "react";
+import toast from "react-hot-toast";
 import { LuSearch } from "react-icons/lu";
 import * as XLSX from "xlsx";
 import { MenuSticky } from "../components";
 import { db } from "../firebase";
+import { useStaffs } from "../hooks";
 import { IStaff, IStaffForm } from "../types";
 import { cn } from "../utils";
 
 export const Staff = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [staffs, setStaffs] = useState<IStaff[]>([]);
   const [loadingGenLuckyNumber, setLoadingGenLuckyNumber] = useState(false);
+  const [loadingDelete, setLoadingDelete] = useState(false);
+  const [loadingImport, setLoadingImport] = useState(false);
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [filterValue, setFilterValue] = useState("");
 
   const hasSearchFilter = Boolean(filterValue);
 
-  const fetchStaffs = async () => {
-    await getDocs(collection(db, "staffs")).then((querySnapshot) => {
-      const newData = querySnapshot.docs.map((doc) => ({
-        ...doc.data(),
-        id: doc.id,
-      }));
-      setStaffs(newData as IStaff[]);
-    });
-  };
-
-  useEffect(() => {
-    fetchStaffs();
-  }, []);
+  const { staffs, mutateStaffs, loading, staffsMap } = useStaffs();
 
   const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const data = await file.arrayBuffer();
-      const workbook = XLSX.read(data);
-      const records = XLSX.utils
-        .sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {
-          header: 1,
-        })
-        .slice(1)
-        .filter(
-          (el) =>
-            (el as any)?.length > 0 && !!(el as any)?.[0] && !!(el as any)?.[1]
+    try {
+      setLoadingImport(true);
+      const file = e.target.files?.[0];
+      if (file) {
+        const data = await file.arrayBuffer();
+        const workbook = XLSX.read(data);
+        const records = XLSX.utils
+          .sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {
+            header: 1,
+          })
+          .slice(1)
+          .filter(
+            (el) =>
+              (el as any)?.length > 0 &&
+              !!(el as any)?.[0] &&
+              !!(el as any)?.[1]
+          );
+        const newStaffs: IStaffForm[] = [];
+        records.forEach((el: any) => {
+          const code = el?.[1];
+          const name = el?.[2];
+          const email = el?.[3];
+          const startDate = el?.[7];
+          const work = el?.[8];
+          if (code && email && startDate && work) {
+            const date = dayjs(new Date("1899-12-30"));
+            newStaffs.push({
+              code: code.toString().trim(),
+              name: name ? name.toString().trim() : "",
+              email: email.toString().trim(),
+              startDate: date.add(startDate, "day").format("YYYY-MM-DD"),
+              isPartTime: work.toString().trim() === "Part-time",
+            });
+          }
+        });
+        const batch = writeBatch(db);
+        let countNew = 0;
+        let countUpdate = 0;
+        newStaffs.forEach((el) => {
+          const docRef = doc(collection(db, "staffs"));
+          if (!staffsMap[el.code]) {
+            batch.set(docRef, el);
+            countNew++;
+          } else {
+            const docRef = doc(db, "staffs", staffsMap[el.code].id);
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { code, ...rest } = el;
+            batch.update(docRef, rest);
+            countUpdate++;
+          }
+        });
+        toast.success(
+          `Thêm mới: ${countNew} nhân viên\n Cập nhật: ${countUpdate} nhân viên`,
+          { position: "top-right", duration: 5000 }
         );
-      const newStaffs: IStaffForm[] = [];
-      records.forEach((el: any) => {
-        const code = el?.[1];
-        const name = el?.[2];
-        const email = el?.[3];
-        const startDate = el?.[7];
-        const work = el?.[8];
-        if (code && email && startDate && work) {
-          const date = dayjs(new Date("1899-12-30"));
-          newStaffs.push({
-            code: code.toString().trim(),
-            name: name ? name.toString().trim() : "",
-            email: email.toString().trim(),
-            startDate: date.add(startDate, "day").format("YYYY-MM-DD"),
-            isPartTime: work.toString().trim() === "Part-time",
-          });
-        }
-      });
-      const batch = writeBatch(db);
-
-      newStaffs.forEach((el) => {
-        const docRef = doc(collection(db, "staffs"));
-        batch.set(docRef, el);
-      });
-      await batch.commit();
+        await batch.commit();
+        mutateStaffs();
+      }
+    } finally {
+      setLoadingImport(false);
     }
   };
 
@@ -104,8 +117,25 @@ export const Staff = () => {
         batch.update(docRef, { luckyNumber: luckyNumbers[idx] });
       });
       await batch.commit();
+      mutateStaffs();
     } finally {
       setLoadingGenLuckyNumber(false);
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    if (!staffs?.length) return;
+    try {
+      setLoadingDelete(true);
+      const batch = writeBatch(db);
+      staffs.forEach((el) => {
+        const docRef = doc(db, "staffs", el.id);
+        batch.delete(docRef);
+      });
+      await batch.commit();
+      mutateStaffs();
+    } finally {
+      setLoadingDelete(false);
     }
   };
 
@@ -275,32 +305,41 @@ export const Staff = () => {
     >
       <MenuSticky />
       <div className="container mx-auto py-6">
-        <div className="flex gap-x-4">
+        <div className="flex gap-4 flex-wrap">
           <Button
             radius="sm"
             onClick={() => fileInputRef.current?.click()}
             color="primary"
+            isLoading={loadingImport}
           >
             Import nhân viên
           </Button>
           {!!staffs?.length && (
-            <Button
-              radius="sm"
-              onClick={handleGenLuckyNumber}
-              color="primary"
-              isLoading={loadingGenLuckyNumber}
-            >
-              Tạo số may mắn ({staffs.length} nhân viên)
-            </Button>
+            <>
+              <Button
+                radius="sm"
+                onClick={handleGenLuckyNumber}
+                color="primary"
+                isLoading={loadingGenLuckyNumber}
+              >
+                Tạo số may mắn ({staffs.length} nhân viên)
+              </Button>
+              <Button
+                radius="sm"
+                onClick={handleDeleteAll}
+                color="danger"
+                isLoading={loadingDelete}
+              >
+                Xoá hết (sử dụng khi import lại)
+              </Button>
+            </>
           )}
         </div>
         <div className="mt-6">
           <Table
             isHeaderSticky
             bottomContent={bottomContent}
-            // bottomContentPlacement="outside"
             topContent={topContent}
-            // topContentPlacement="outside"
           >
             <TableHeader columns={columns}>
               {(column) => (
@@ -315,6 +354,7 @@ export const Staff = () => {
               )}
             </TableHeader>
             <TableBody
+              isLoading={loading}
               emptyContent={"Không tìm thấy nhân viên nào"}
               items={displayStaffs}
             >
