@@ -12,15 +12,89 @@ import {
   TableRow,
   Tabs,
 } from "@nextui-org/react";
+import { deleteDoc, doc, updateDoc } from "firebase/firestore";
+import { useEffect, useMemo, useState } from "react";
 import { LuTrash } from "react-icons/lu";
 import { MAPPING_PRIZE_NAME } from "../constants";
+import { db } from "../firebase";
+import { IPrize, IStaff } from "../types";
+import { cn } from "../utils";
 
 type Props = {
   open: boolean;
   onClose: () => void;
+  prizes: IPrize[];
+  mutatePrizes: () => Promise<void>;
+  staffs?: IStaff[];
 };
 
-export const JackpotResult: React.FC<Props> = ({ open, onClose }: Props) => {
+export const JackpotResult: React.FC<Props> = ({
+  open,
+  onClose,
+  staffs = [],
+  prizes,
+  mutatePrizes,
+}: Props) => {
+  const [currentTab, setCurrentTab] = useState(4);
+
+  useEffect(() => {
+    if (open) {
+      mutatePrizes();
+    }
+  }, [open]);
+
+  const columns = [
+    { name: "Mã nhân viên", uid: "code" },
+    { name: "Số may mắn", uid: "luckyNumber" },
+    { name: "Họ tên", uid: "name" },
+    { name: "Email", uid: "email" },
+    { name: "Actions", uid: "action" },
+  ];
+
+  const handleDeletePrize = async (prize: IPrize) => {
+    const code = prize.code;
+    await deleteDoc(doc(db, "prizes", prize.id));
+
+    const staffId = staffs.find((el) => el.code === code)?.id;
+    if (staffId) {
+      const docRef = doc(db, "staffs", staffId);
+      await updateDoc(docRef, { isWin: false });
+    }
+
+    mutatePrizes();
+  };
+
+  const renderCell = (staff: IStaff, columnKey: string) => {
+    const cellValue = staff[columnKey as keyof IStaff];
+
+    switch (columnKey) {
+      case "action":
+        return (
+          <LuTrash
+            onClick={() => {
+              const isConfirm = confirm(`Gỡ giải thưởng của bạn ${staff.name}`);
+              if (isConfirm) {
+                const deletedPrize = prizes.find(
+                  (el) => el.code === staff.code
+                );
+                if (deletedPrize) handleDeletePrize(deletedPrize);
+              }
+            }}
+            className="text-red-500 cursor-pointer"
+          />
+        );
+      default:
+        return cellValue;
+    }
+  };
+
+  const displayItems = useMemo(() => {
+    const listPrize = prizes
+      .filter((el) => el.prize === +currentTab)
+      .map((el) => el.code);
+    return staffs.filter((el) => listPrize.includes(el.code));
+  }, [prizes, staffs, currentTab]);
+
   return (
     <Modal
       size="4xl"
@@ -35,7 +109,13 @@ export const JackpotResult: React.FC<Props> = ({ open, onClose }: Props) => {
           Kết quả quay số may mắn
         </ModalHeader>
         <ModalBody className="py-4">
-          <Tabs size="lg" fullWidth variant="underlined">
+          <Tabs
+            selectedKey={currentTab}
+            onSelectionChange={(k) => setCurrentTab(k as number)}
+            size="lg"
+            fullWidth
+            variant="underlined"
+          >
             {[4, 3, 2, 1, 0].map((el) => (
               <Tab
                 className="bg-transparent"
@@ -44,30 +124,29 @@ export const JackpotResult: React.FC<Props> = ({ open, onClose }: Props) => {
               />
             ))}
           </Tabs>
-          <Table classNames={{ wrapper: "py-0" }} shadow="none">
-            <TableHeader>
-              <TableColumn align="center">#</TableColumn>
-              <TableColumn align="center">Mã nhân viên</TableColumn>
-              <TableColumn width={200} align="center">
-                Họ và tên
-              </TableColumn>
-              <TableColumn width={200} align="center">
-                Email
-              </TableColumn>
-              <TableColumn align="center">Actions</TableColumn>
+          <Table>
+            <TableHeader columns={columns}>
+              {(column) => (
+                <TableColumn
+                  key={column.uid}
+                  className={cn({
+                    "min-w-[200px]": column.uid === "name",
+                  })}
+                >
+                  {column.name}
+                </TableColumn>
+              )}
             </TableHeader>
-            <TableBody>
-              {[1, 2, 3, 4].map((el, idx) => (
-                <TableRow key={el}>
-                  <TableCell>{idx + 1}</TableCell>
-                  <TableCell>F12345</TableCell>
-                  <TableCell>Trần Tiến Đức</TableCell>
-                  <TableCell>ductran@prepedu.com</TableCell>
-                  <TableCell className="flex justify-center">
-                    <LuTrash className="text-red-500 cursor-pointer" />
-                  </TableCell>
+            <TableBody emptyContent={"Chưa có dữ liệu"} items={displayItems}>
+              {(item) => (
+                <TableRow key={item.id}>
+                  {(columnKey) => (
+                    <TableCell className="text-black">
+                      {renderCell(item, columnKey as string)}
+                    </TableCell>
+                  )}
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
         </ModalBody>

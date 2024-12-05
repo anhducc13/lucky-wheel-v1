@@ -30,6 +30,41 @@
     font-display: swap;
     src: url(./assets/fonts/SVN-Poppins-Regular.ttf);
   }
+
+  @font-face {
+    font-family: Snell Roundhand;
+    src: url(./assets/fonts/Snell-Roundhand.ttf) format("woff");
+    font-weight: normal;
+    font-style: normal;
+  }
+
+  @font-face {
+    font-family: Comfortaa;
+    src: url(./assets/fonts/Comfortaa-Regular.ttf) format("woff");
+    font-weight: normal;
+    font-style: normal;
+  }
+
+  @font-face {
+    font-family: Comfortaa;
+    src: url(./assets/fonts/Comfortaa-Light.ttf) format("woff");
+    font-weight: lighter;
+    font-style: normal;
+  }
+
+  @font-face {
+    font-family: Comfortaa;
+    src: url(./assets/fonts/Comfortaa-Bold.ttf) format("woff");
+    font-weight: bold;
+    font-style: normal;
+  }
+
+  @font-face {
+    font-family: Comfortaa;
+    src: url(./assets/fonts/Comfortaa-SemiBold.ttf) format("woff");
+    font-weight: bolder;
+    font-style: normal;
+  }
 }
 
 @layer utilities {
@@ -67,6 +102,10 @@ body {
 h1 {
   font-size: 3.2em;
   line-height: 1.1;
+}
+
+.home-page {
+  font-family: Comfortaa, Poppins, "sans-serif", "system-ui";
 }
 
 @media (prefers-color-scheme: light) {

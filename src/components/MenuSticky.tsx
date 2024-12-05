@@ -10,7 +10,12 @@ import { LuList } from "react-icons/lu";
 import { firebaseAuth } from "../firebase";
 import { Link } from "react-router-dom";
 
-export const MenuSticky = () => {
+type Props = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  soundElement?: any;
+};
+
+export const MenuSticky: React.FC<Props> = ({ soundElement }) => {
   const handleLogout = () => {
     signOut(firebaseAuth).then(() => {
       window.location.reload();
@@ -29,7 +34,10 @@ export const MenuSticky = () => {
         </Button>
       </DropdownTrigger>
       <DropdownMenu aria-label="Static Actions">
-        <DropdownItem as={Link} href="/" key="new" {...{ to: "/" }}>
+        <DropdownItem as={Link} href="/" key="home" {...{ to: "/" }}>
+          Trang chủ
+        </DropdownItem>
+        <DropdownItem as={Link} href="/spin" key="new" {...{ to: "/spin" }}>
           Quay số
         </DropdownItem>
         <DropdownItem
@@ -40,6 +48,7 @@ export const MenuSticky = () => {
         >
           Danh sách nhân viên
         </DropdownItem>
+        {soundElement && soundElement}
         <DropdownItem
           onClick={handleLogout}
           key="delete"

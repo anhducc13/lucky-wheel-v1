@@ -39,7 +39,7 @@ export const Strip: React.FC<Props> = ({
   }, [state, rands.length, count]);
 
   useEffect(() => {
-    let interval: number | undefined;
+    let interval: NodeJS.Timeout | undefined;
     if (state === "running") {
       interval = setInterval(() => {
         setCount((prev) => prev + 1);

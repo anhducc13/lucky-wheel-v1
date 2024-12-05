@@ -4,9 +4,10 @@ import {
   useHref,
   useNavigate,
 } from "react-router-dom";
-import { Home } from "./pages/Home";
 import { Staff } from "./pages/Staff";
 import { NextUIProvider } from "@nextui-org/react";
+import { Spin } from "./pages/Spin";
+import { Home } from "./pages/Home";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const Layout = () => {
@@ -25,6 +26,10 @@ export const browserRouter = createBrowserRouter([
       {
         path: "/",
         element: <Home />,
+      },
+      {
+        path: "/spin",
+        element: <Spin />,
       },
       {
         path: "/staffs",
